@@ -67,18 +67,22 @@ def read_flags(simdir, snap):
 
 
 # Calculate distance of galID from central for all snapshots
-def extract_dist(simdir, galID):
+def extract_dist(simdir, galID, relativeGalID):
     positions = h5py.File(simdir+'highlev/GalaxyPositionsSnap.hdf5', 'r')['Centre']
-    galaxy_position = positions[galID]
+    # SHI = h5py.File(simdir+'highlev/FullGalaxyTables.hdf5', 'r')['SHI']
+    # spiderweb = h5py.File(simdir+'highlev/SpiderwebTables.hdf5', 'r')['Subhalo']
+    # gal_SHI = SHI[galID]
+    # rel_SHI = SHI[relativeGalID]
+
     dist = np.zeros(30)
     for i in range(30):
-        centralID = read_galaxyIDs(simdir, snap=snaplist[i])[0]
-        c = positions[centralID]
+        gal_pos = positions[galID]
+        rel_gal_pos = positions[relativeGalID]
         # print(centralID)
-        if galaxy_position[i, 0] is not -np.inf:
-            dx = galaxy_position[i, 0] - c[i, 0]
-            dy = galaxy_position[i, 1] - c[i, 1]
-            dz = galaxy_position[i, 2] - c[i, 2]
+        if gal_pos[i, 0] is not -np.inf:
+            dx = gal_pos[i, 0] - rel_gal_pos[i, 0]
+            dy = gal_pos[i, 1] - rel_gal_pos[i, 1]
+            dz = gal_pos[i, 2] - rel_gal_pos[i, 2]
             dist[i] = np.sqrt(dx*dx + dy*dy + dz*dz)
     return dist
 
@@ -94,7 +98,7 @@ def SelectDMdeprived(logDM, logSM, flags):
     return np.where(a == 1)[0]
 
 
-def ThePlot_stripping(cluster_index, snap, simdir, logDM, logSM, cmap, ind, frac, no, conv,
+def ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM, cmap, ind, frac, no, conv,
                       filename=None, Mstar=None, Mdm=None, extract=False, zoomin=False, show=True):
     plt.figure(figsize=(7, 6))
     plt.scatter(logDM[ind], logSM[ind], s=4, c=cmap[conv], cmap='Greys')
@@ -121,20 +125,20 @@ def ThePlot_stripping(cluster_index, snap, simdir, logDM, logSM, cmap, ind, frac
     plt.ylabel('log($M_{stars}/M_{\odot}$)')
     plt.legend()
 
-    m_2372 = np.loadtxt('masses-2373.txt', delimiter=',', unpack=True)
-    d = extract_dist(simdir, 2373)
+    m_2372 = np.loadtxt('output/masses-2373.txt', delimiter=',', unpack=True)
+    d = extract_dist(simdir, galID, relGalID)
     plt.plot(m_2372[2], m_2372[1], color='k', linewidth=1, linestyle='--')
     plt.scatter(m_2372[2], m_2372[1], marker='*', c=d, cmap='plasma')
     cbar = plt.colorbar()
-    cbar.ax.set_ylabel('Distance from nearest galaxy')
+    cbar.ax.set_ylabel('Distance from galaxy ID = '+str(relGalID))
     plt.tight_layout()
-
-    if show:
-        plt.show()
 
     plt.savefig(filename, dpi=300)
     print('\nPLOTTING DONE!')
     print('\nSaved '+filename)
+
+    if show:
+        plt.show()
 
 
 cluster_index = 29
@@ -157,9 +161,16 @@ a = a[np.where(logDM[a] != -np.inf)[0]]
 no = len(np.where(logDM[a] != -np.inf)[0])
 frac = no/len(ind)
 
-filename = '/home/belcheva/Desktop/trials.png'
 
-ThePlot_stripping(cluster_index, snap, simdir, logDM, logSM,
+galID = 2373
+relGalID = 163379
+filename = '/home/belcheva/Desktop/str-relto'+str(relGalID)+'.png'
+
+d = extract_dist(simdir, galID, relGalID)
+print(d)
+print(np.argmax(d))
+
+ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM,
                   cmap=dist, ind=ind, frac=frac, no=no, conv=ind, filename=filename)
 
 end = time.time()
