@@ -98,7 +98,16 @@ def bootstrap_CoM(galID, ptype, size):
 
     f = open('output/displacement_'+str(ptype)+'_'+str(galID)+'.txt', 'a')
 
+    timecheck = time.time()
+    k = 1
+
     for i in range(size):
+
+        if i == size/100*k:
+            print(str(k)+'%, '+str(time.time()-timecheck))
+            timecheck = time.time()
+            k += 1
+
         index = np.arange(len(pos))
         index = bootstrap(index).astype(int)
 
@@ -126,4 +135,26 @@ def bootstrap_CoM(galID, ptype, size):
     print('\nElapsed: ', end-start, '\n')
 
 
-bootstrap_CoM(galID=4452, ptype=1, size=1000)
+galIDs = np.loadtxt('output/lessDM.txt', unpack=True)[0].astype(int)
+
+for galID in galIDs[1:]:
+    if galID == 2373:
+        pass
+    else:
+        beg = time.time()
+
+        print(galID)
+
+        print('\nBootstrapping DM...\n')
+        bootstrap_CoM(galID=galID, ptype=1, size=5000)
+
+        mid = time.time()
+        print('DM took ', mid-beg)
+
+        print('\nBootstrapping SM...\n')
+        bootstrap_CoM(galID=galID, ptype=4, size=5000)
+
+        end = time.time()
+
+        print('SM took ', end-mid)
+        print('Elapsed for '+str(galID)+': ' + str(end-beg))
