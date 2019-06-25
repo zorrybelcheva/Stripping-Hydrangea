@@ -3,6 +3,10 @@ import h5py
 import sim_tools as st
 import matplotlib.pyplot as plt
 import time
+import matplotlib
+
+matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['font.serif'][0] = 'palatino'
 
 start = time.time()
 
@@ -98,6 +102,51 @@ def SelectDMdeprived(logDM, logSM, flags):
     return np.where(a == 1)[0]
 
 
+# Working on this: make 1-sigma shaded region in Mstar/Mdm plane
+def make_contours(logDM, logSM, ind):
+    logDM = logDM[ind]
+    logSM = logSM[ind]
+
+    bins = np.linspace(7, 13, num=49)
+    counts = np.zeros(49)
+    w = bins[1] - bins[0]
+    bin_index = np.zeros(len(ind))
+
+    for i in range(len(ind)):
+        if logSM[i] < 7:
+            bin_index[i] = 100
+        else:
+            index = int(logSM[i] // w - 56)
+            bin_index[i] = index
+            counts[index] += 1
+
+    present = np.where(logSM >= 7)[0]
+    num = len(present)
+    logSM = logSM[present]
+    logDM = logDM[present]
+    bin_index = bin_index[present].astype(int)
+
+    means = np.zeros(49)
+    std = np.zeros(49)
+
+    logDM_copy = logDM
+
+    for i in range(49):
+        m = logDM_copy[np.where(bin_index == i)[0]]
+        means[i] = np.average(m)
+        std[i] = np.std(m)
+        new = np.where(bin_index > i)[0]
+        logDM_copy = logDM_copy[new]
+        bin_index = bin_index[new]
+
+    return bins, counts, bin_index, means, std
+
+
+# Makes Mstar vs Mdm showing a the evolution of a galaxy with ID = galID in the cluster
+# strip colormapped with relative distance from relGalID
+#   extract = True      plot the box in the extraction region
+#   zoomin = True       zoom in the extraction region
+#   conv                can be used to colormap based on another property e.g. rel radius
 def ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM, cmap, ind, frac, no, conv,
                       filename=None, Mstar=None, Mdm=None, extract=False, zoomin=False, show=True):
     plt.figure(figsize=(7, 6))
@@ -125,6 +174,7 @@ def ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM
     plt.ylabel('log($M_{stars}/M_{\odot}$)')
     plt.legend()
 
+    # Not generalised yet: only works for galID = 2373
     m_2372 = np.loadtxt('output/masses-2373.txt', delimiter=',', unpack=True)
     d = extract_dist(simdir, galID, relGalID)
     plt.plot(m_2372[2], m_2372[1], color='k', linewidth=1, linestyle='--')
@@ -139,6 +189,66 @@ def ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM
 
     if show:
         plt.show()
+
+
+# Same as ThePlot_stripping, except it does 2 panels:
+# 1 - Mstar/Mdm as before
+# 2 - the distance between galID and relGalID in the snapshots (orbits)
+def ThePlot_stripping_dist(galID, relGalID, cluster_index, snap, simdir, logDM, logSM, cmap, ind, frac, no, conv,
+                           filename=None, Mstar=None, Mdm=None, extract=False, zoomin=False, show=True):
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+
+    ax1.scatter(logDM[ind], logSM[ind], s=4, c=cmap[conv], cmap='Greys')
+    ax1.set_title('Cluster ' + str(cluster_index) + ', snap ' + snap[:3] + ', fraction of DM-lacking = {:.3f}%, '
+                  .format(frac*100) + 'total no. = ' + str(no), fontsize='small')
+    ax1.set_xlabel('log($M_{dark}/M_{\odot}$)')
+    ax1.set_ylabel('log($M_{stars}/M_{\odot}$)')
+
+    ylim = [7, 12]
+    xlim = [8, 14]
+    if extract:
+        ax1.axhline(Mstar, c='k', linewidth=1)
+        ax1.axhline(Mstar + 0.1, c='k', linewidth=1)
+        ax1.axvline(Mdm, c='k', linewidth=1)
+        ax1.axvline(Mdm+0.1, c='k', linewidth=1)
+
+    if zoomin:
+        ax1.set_xlim(Mdm-1, Mdm+1)
+        ax1.set_ylim(Mstar-1, Mstar+1)
+    else:
+        ax1.set_xlim(xlim)
+        ax1.set_ylim(ylim)
+
+    ax1.plot(ylim, ylim, c='g', linewidth=1, label='y = x')
+    ax1.legend()
+
+    m_2372 = np.loadtxt('output/masses-2373.txt', delimiter=',', unpack=True)
+
+    d = extract_dist(simdir, galID, relGalID)
+    ax1.plot(m_2372[2], m_2372[1], color='k', linewidth=1, linestyle='--')
+    im = ax1.scatter(m_2372[2], m_2372[1], marker='*', c=d, cmap='plasma')
+
+    ax2.scatter(range(30), d, marker='*', c=d, cmap='plasma')
+    ax2.plot(range(30), d, c='k')
+    ax2.set_xlabel('Snapshot number')
+    ax2.set_ylabel('Relative distance, [pMpc]')
+    ax2.set_title('GalID = ' + str(galID) + ' relative to ' + str(relGalID), fontsize='small')
+
+    # fig.add_subplot(111, frameon=False)
+    # plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+    # plt.title('')
+
+    cbar = fig.colorbar(im, ax=ax2)
+    cbar.ax.set_ylabel('Distance from galaxy ID = '+str(relGalID))
+    plt.tight_layout()
+
+    plt.savefig(filename, dpi=300)
+    print('\nPLOTTING DONE!')
+    print('\nSaved '+filename)
+
+    if show:
+        fig.show()
 
 
 cluster_index = 29
@@ -163,16 +273,17 @@ frac = no/len(ind)
 
 
 galID = 2373
-relGalID = 163379
-filename = '/home/belcheva/Desktop/str-relto'+str(relGalID)+'.png'
+relGalID = 2373
+filename = '/home/belcheva/Desktop/'+str(galID)+'-relto'+str(relGalID)+'.png'
 
 d = extract_dist(simdir, galID, relGalID)
-print(d)
-print(np.argmax(d))
+# print(d)
+# print(np.argmax(d))
 
-ThePlot_stripping(galID, relGalID, cluster_index, snap, simdir, logDM, logSM,
-                  cmap=dist, ind=ind, frac=frac, no=no, conv=ind, filename=filename)
+ThePlot_stripping_dist(galID, relGalID, cluster_index, snap, simdir, logDM, logSM,
+                       cmap=dist, ind=ind, frac=frac, no=no, conv=ind, filename=filename)
 
 end = time.time()
 
 print('Time elapsed: ', end-start)
+
