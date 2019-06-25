@@ -5,7 +5,9 @@ matplotlib.rcParams['font.family'] = 'serif'
 matplotlib.rcParams['font.serif'][0] = 'palatino'
 
 
-def read_mean_std(galID):
+# Calculate the mean and std of x, y, z, as well as an estimate of the
+# distance d and its corresponding uncertainty, using error propagation
+def calculate_mean_std(galID):
     outputdir = '/home/belcheva/PycharmProjects/project/Stripping-Hydrangea/output/'
 
     # Dark Matter particles:
@@ -48,13 +50,11 @@ def read_mean_std(galID):
     muy = meanydm - meanysm
     muz = meanzdm - meanzsm
 
-    # mud = np.abs(meanddm - meandsm)
     mud = np.sqrt(mux*mux+muy*muy+muz*muz)
 
     stdx = np.sqrt(stdxdm**2+stdxsm**2)
     stdy = np.sqrt(stdydm**2+stdysm**2)
     stdz = np.sqrt(stdzdm**2+stdzsm**2)
-    # stdd = np.sqrt(stdddm**2+stddsm**2)
 
     stdd = np.sqrt((mux/mud)**2*stdx + (muy/mud)**2*stdy + (muz/mud)**2*stdz)
 
@@ -72,7 +72,7 @@ mx, my, mz, md = [], [], [], []
 sx, sy, sz, sd = [], [], [], []
 
 for galID in galIDs:
-    mu, std = read_mean_std(galID)
+    mu, std = calculate_mean_std(galID)
     mx.append(mu[0])
     my.append(mu[1])
     mz.append(mu[2])
