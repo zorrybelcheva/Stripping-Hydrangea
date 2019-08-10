@@ -86,8 +86,8 @@ def bootstrap_CoM(galID, ptype, size):
     if ptype == 4:
         mass = readReg.read_data("Mass", astro=True)
         ind = np.loadtxt('output/indexing_array_stars_' + str(galID) + '.txt', unpack=True).astype(int)
-        mass = np.zeros(pos.shape[0]) + st.m_dm(snapdir, issnapdir=True, astro=True)
     elif ptype == 1:
+        mass = np.zeros(pos.shape[0]) + st.m_dm(snapdir, issnapdir=True, astro=True)
         ind = np.loadtxt('output/indexing_array_'+str(galID)+'.txt', unpack=True).astype(int)
 
     #   ---------------- BOOTSTRAPPING DM AND STARS TOGETHER ------------------
@@ -169,4 +169,3 @@ for galID in [galIDs[0]]:
             # print('SM took ', end-mid)
             print('Elapsed for '+str(galID)+': ' + str(end-beg))
             print('Size of bootstrap: ', size)
-            
