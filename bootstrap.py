@@ -82,13 +82,20 @@ def bootstrap_CoM(galID, ptype, size):
     readReg = ht.ReadRegion(snapdir, ptype, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
     pos = readReg.read_data("Coordinates", astro=True)
 
-    if ptype != 1:
+#   ---------------- BOOTSTRAPPING DM AND STARS SEPARATELY ------------------
+    if ptype == 4:
         mass = readReg.read_data("Mass", astro=True)
         ind = np.loadtxt('output/indexing_array_stars_' + str(galID) + '.txt', unpack=True).astype(int)
-    else:
         mass = np.zeros(pos.shape[0]) + st.m_dm(snapdir, issnapdir=True, astro=True)
+    elif ptype == 1:
         ind = np.loadtxt('output/indexing_array_'+str(galID)+'.txt', unpack=True).astype(int)
 
+    #   ---------------- BOOTSTRAPPING DM AND STARS TOGETHER ------------------
+    else:
+        ind_stars = np.loadtxt('output/indexing_array_stars_' + str(galID) + '.txt', unpack=True).astype(int)
+        ind_dm = np.loadtxt('output/indexing_array_' + str(galID) + '.txt', unpack=True).astype(int)
+
+    print('\nNumber of particles: ', len(ind))
     pos = pos[ind]
     mass = mass[ind]
     dist = np.zeros(size)
@@ -96,14 +103,14 @@ def bootstrap_CoM(galID, ptype, size):
     dy = np.zeros(size)
     dz = np.zeros(size)
 
-    f = open('output/displacement_'+str(ptype)+'_'+str(galID)+'.txt', 'a')
+    # f = open('output/displacement_'+str(ptype)+'_'+str(galID)+'.txt', 'a')
 
     timecheck = time.time()
     k = 1
 
     for i in range(size):
 
-        if i == size/100*k:
+        if i == size/10*k:
             print(str(k)+'%, '+str(time.time()-timecheck))
             timecheck = time.time()
             k += 1
@@ -123,9 +130,9 @@ def bootstrap_CoM(galID, ptype, size):
         dy[i] = CoM[1] - pos_gal[1]
         dz[i] = CoM[2] - pos_gal[2]
 
-        f.write('{}\t{}\t{}\t{}\n'.format(dx[i], dy[i], dz[i], dist[i]))
+        # f.write('{}\t{}\t{}\t{}\n'.format(dx[i], dy[i], dz[i], dist[i]))
 
-    f.close()
+    # f.close()
 
     print(np.average(dist)*1000)
     print(np.std(dist)*1000)
@@ -137,24 +144,29 @@ def bootstrap_CoM(galID, ptype, size):
 
 galIDs = np.loadtxt('output/lessDM.txt', unpack=True)[0].astype(int)
 
-for galID in galIDs[1:]:
-    if galID == 2373:
-        pass
-    else:
-        beg = time.time()
+for galID in [galIDs[0]]:
 
-        print(galID)
+    for size in [10, 50, 100, 200, 500, 1000]:
 
-        print('\nBootstrapping DM...\n')
-        bootstrap_CoM(galID=galID, ptype=1, size=5000)
+        if galID == 2373:
+            pass
+        else:
+            beg = time.time()
 
-        mid = time.time()
-        print('DM took ', mid-beg)
+            print(galID)
 
-        print('\nBootstrapping SM...\n')
-        bootstrap_CoM(galID=galID, ptype=4, size=5000)
+            print('\nBootstrapping DM...\n')
+            bootstrap_CoM(galID=galID, ptype=1, size=size)
 
-        end = time.time()
+            # mid = time.time()
+            # print('DM took ', mid-beg)
+            #
+            # print('\nBootstrapping SM...\n')
+            # bootstrap_CoM(galID=galID, ptype=4, size=size)
 
-        print('SM took ', end-mid)
-        print('Elapsed for '+str(galID)+': ' + str(end-beg))
+            end = time.time()
+
+            # print('SM took ', end-mid)
+            print('Elapsed for '+str(galID)+': ' + str(end-beg))
+            print('Size of bootstrap: ', size)
+            
