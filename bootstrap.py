@@ -79,23 +79,36 @@ def bootstrap_CoM(galID, ptype, size):
     pos_allGal = yb.read_hdf5(posloc, "Centre")[:, plot_snap, :]
     pos_gal = pos_allGal[galID, :]
 
-    readReg = ht.ReadRegion(snapdir, ptype, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
-    pos = readReg.read_data("Coordinates", astro=True)
+    # readReg = ht.ReadRegion(snapdir, ptype, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
+    # pos = readReg.read_data("Coordinates", astro=True)
 
 #   ---------------- BOOTSTRAPPING DM AND STARS SEPARATELY ------------------
     if ptype == 4:
+        readReg = ht.ReadRegion(snapdir, ptype, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
+        pos = readReg.read_data("Coordinates", astro=True)
         mass = readReg.read_data("Mass", astro=True)
         ind = np.loadtxt('output/indexing_array_stars_' + str(galID) + '.txt', unpack=True).astype(int)
     elif ptype == 1:
+        readReg = ht.ReadRegion(snapdir, ptype, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
+        pos = readReg.read_data("Coordinates", astro=True)
         mass = np.zeros(pos.shape[0]) + st.m_dm(snapdir, issnapdir=True, astro=True)
         ind = np.loadtxt('output/indexing_array_'+str(galID)+'.txt', unpack=True).astype(int)
 
     #   ---------------- BOOTSTRAPPING DM AND STARS TOGETHER ------------------
     else:
         print('Bootstrapping all particles')
+        readReg_stars = ht.ReadRegion(snapdir, 4, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
+        pos = readReg_stars.read_data("Coordinates", astro=True)
+        mass_stars = readReg_stars.read_data("Mass", astro=True)
         ind_stars = np.loadtxt('output/indexing_array_stars_' + str(galID) + '.txt', unpack=True).astype(int)
+
+        readReg_dm = ht.ReadRegion(snapdir, 1, [*pos_gal / conv_astro_pos, imsize * np.sqrt(3) / conv_astro_pos])
+        pos = readReg_dm.read_data("Coordinates", astro=True)
+        mass_dm = np.zeros(pos.shape[0]) + st.m_dm(snapdir, issnapdir=True, astro=True)
         ind_dm = np.loadtxt('output/indexing_array_' + str(galID) + '.txt', unpack=True).astype(int)
+
         ind = np.concatenate((ind_stars, ind_dm))
+        mass = np.concatenate((mass_stars, mass_dm))
 
     print('\nNumber of particles: ', len(ind))
     pos = pos[ind]
